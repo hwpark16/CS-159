@@ -13,6 +13,7 @@ import gym
 from gym import spaces, logger
 from gym.utils import seeding
 import numpy as np
+import scipy as sp
 
 class CoolingFinEnv(gym.Env):
     metadata = {
@@ -20,11 +21,7 @@ class CoolingFinEnv(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self):
-        #set action and observation (state) spaces
-        self.action_space = spaces.Box(low=-self.r_max, high=self.r_max, shape=(self.N,))
-        self.observation_space = spaces.Box(low=-self.r_max, high=self.T0, shape=(2*self.N+2,))
-        
+    def __init__(self):        
         #set up parameters
         self.h = 20
         self.k = 400
@@ -39,7 +36,10 @@ class CoolingFinEnv(gym.Env):
         self.N = 100
         self.x = np.linspace(0,self.L,self.N)
         self.dx = self.x[1]-self.x[0]
-        self.tol = r_min#if norm of action goes below this we have converged
+        self.tol = self.r_min#if norm of action goes below this we have converged
+        #set action and observation (state) spaces
+        self.action_space = spaces.Box(low=-self.r_max, high=self.r_max, shape=(self.N,))
+        self.observation_space = spaces.Box(low=-self.r_max, high=self.T0, shape=(2*self.N+2,))
         #Randomize initial state
         self.randState()
         # Angle at which to fail the episode
@@ -82,25 +82,25 @@ class CoolingFinEnv(gym.Env):
 
     def completeState(self):
         #Solve the heat equation
-        M = np.zeros((N,N))
-        f = np.zeros((N,1))
+        M = np.zeros((self.N,self.N))
+        f = np.zeros((self.N,1))
         M[0,0] = 1
         f[0,0] = self.T0
-        M[N-1,N-1] = 3/(2*self.dx)+self.h/self.k
-        M[N-1,N-2] = -2/dx
-        M[N-1,N-3] = 1/(2*dx)
-        f[N-1,0] = Tinf*h/k
-        for i in range(1,N-1):
-            M[i,i+1] = 0.5*r[i]/(dx**2)+0.25*(r[i+1]-r[i-1])/(dx**2);
-            M[i,i] = -r[i]/(dx**2)-h/k;
-            M[i,i-1] = 0.5*r[i]/(dx**2)-0.25*(r[i+1]-r[i-1])/(dx**2);
-            f[i,0] = -h*Tinf/k;
+        M[self.N-1,self.N-1] = 3/(2*self.dx)+self.h/self.k
+        M[self.N-1,self.N-2] = -2/self.dx
+        M[self.N-1,self.N-3] = 1/(2*self.dx)
+        f[self.N-1,0] = self.Tinf*self.h/self.k
+        for i in range(1,self.N-1):
+            M[i,i+1] = 0.5*self.r[i]/(self.dx**2)+0.25*(self.r[i+1]-self.r[i-1])/(self.dx**2);
+            M[i,i] = -self.r[i]/(self.dx**2)-self.h/self.k;
+            M[i,i-1] = 0.5*self.r[i]/(self.dx**2)-0.25*(self.r[i+1]-self.r[i-1])/(self.dx**2);
+            f[i,0] = -self.h*self.Tinf/self.k;
         self.T = np.linalg.solve(M,f)
         #Post process to find V and Q
-        A = np.pi*r**2;
-        self.Q = -k*A[0]*(-1.5*T[0]+2*T[1]-0.5*T[2])/dx;
-        self.V = np.trapz(A,x)
-        self.state = [self.r,self.T,Q,V]
+        A = np.pi*self.r**2;
+        self.Q = -self.k*A[0]*(-1.5*self.T[0]+2*self.T[1]-0.5*self.T[2])/self.dx;
+        self.V = np.trapz(A,self.x)
+        self.state = [self.r,self.T,self.Q,self.V]
     
     def randState(self):
         #Randomize the state
@@ -111,7 +111,7 @@ class CoolingFinEnv(gym.Env):
         x = np.linspace(0,1,self.N)
         rs = sp.interpolate.CubicSpline(xp,rp)
         RR = rs(x)
-        for i in range(0,N):
+        for i in range(0,self.N):
             if(RR[i]>(self.r_max)):
                 RR[i]=self.r_max
             elif(RR[i]<(self.r_min)):
