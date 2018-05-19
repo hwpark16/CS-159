@@ -101,6 +101,10 @@ class CoolingFinEnv(gym.Env):
         self.Q = -self.k*A[0]*(-1.5*self.T[0]+2*self.T[1]-0.5*self.T[2])/self.dx;
         self.V = np.trapz(A,self.x)
         self.state = [self.r,self.T,self.Q,self.V]
+        
+    def reset(self):
+        self.randState()
+        return np.array(self.state)
     
     def randState(self):
         #Randomize the state
