@@ -32,8 +32,9 @@ class CoolingFinEnv(gym.Env):
         #self.tau = 0.02  # seconds between state updates
         self.r_max = 0.6
         self.r_min = 0.015
+        self.Qmin = 5000
         #Make grid
-        self.N = 100
+        self.N = 20
         self.x = np.linspace(0,self.L,self.N)
         self.dx = self.x[1]-self.x[0]
         self.tol = self.r_min#if norm of action goes below this we have converged
@@ -96,11 +97,14 @@ class CoolingFinEnv(gym.Env):
             M[i,i-1] = 0.5*self.r[i]/(self.dx**2)-0.25*(self.r[i+1]-self.r[i-1])/(self.dx**2);
             f[i,0] = -self.h*self.Tinf/self.k;
         self.T = np.linalg.solve(M,f)
+        self.T=self.T[:,0]
         #Post process to find V and Q
         A = np.pi*self.r**2;
         self.Q = -self.k*A[0]*(-1.5*self.T[0]+2*self.T[1]-0.5*self.T[2])/self.dx;
         self.V = np.trapz(A,self.x)
-        self.state = [self.r,self.T,self.Q,self.V]
+        self.state = np.concatenate((self.r,self.T),axis=0)
+        self.state = np.append(self.state,self.Q)
+        self.state = np.append(self.state,self.V)
         
     def reset(self):
         self.randState()
