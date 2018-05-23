@@ -25,31 +25,32 @@ class CoolingFinEnv(gym.Env):
 
     def __init__(self):        
         #set up parameters
-        self.counter = 999
+        self.counter = 0
+        self.counter2 = 0
         self.h = 20
         self.k = 400
         self.L = 1
         self.r0 = 0.25
         self.T0 = 500
         self.Tinf = 200
-        self.r_max = 0.6
-        self.r_min = 0.015
+        self.r_max = 0.1
+        self.r_min = 0.02
         self.Qmin = 5000
         #Make grid
-        self.ml_N = 20
+        self.ml_N = 10
         self.ml_x = np.linspace(0,self.L,self.ml_N)
         self.ml_dx = self.ml_x[1]-self.ml_x[0]
         #Make grid
-        self.pde_N = 1000
+        self.pde_N = 500
         self.pde_x = np.linspace(0,self.L,self.pde_N)
         self.pde_dx = self.pde_x[1]-self.pde_x[0]
-        self.tol = self.r_min#if norm of action goes below this we have converged
+        self.tol = self.r_min/100#if norm of action goes below this we have converged
         #set action and observation (state) spaces
         self.action_space = spaces.Box(low=-self.r_max, high=self.r_max, shape=(self.ml_N,))
         self.observation_space = spaces.Box(low=0, high=100000, shape=(2*self.ml_N+2,))#increase high
         #Randomize initial state
         self.randState()
-
+        self.rwd = np.zeros(1)
         self.seed()
         self.viewer = None
         self.state = None
@@ -85,19 +86,29 @@ class CoolingFinEnv(gym.Env):
         #just have an if statement...
         #maybe leaky ReLU is the best choice of reward function
         reward = -500*self.V+self.Q
+        #reward = self.Q
+        #reward = self.V
+        self.rwd = np.append(self.rwd,reward)
+        self.counter2 = self.counter2 + 1
         self.counter = self.counter +1
-        if self.counter == 5000:
+        if self.counter == 10000:
+            print(self.rwd)
             self.counter = 0
             plt.figure()
-            plt.plot(self.ml_x,self.r)
-            plt.title('reward: '+str(reward))
-            plt.xlabel('Volume: '+str(self.V))
-            plt.ylabel('Heat Transfer: '+str(self.Q))
+            plt.plot(self.pde_x,self.pde_r)
+            #plt.title('reward: '+str(reward))
+            plt.xlabel('x')
+            plt.ylabel('Fin Radius')
+            plt.ylim((0,self.r_max*1.1))
             plt.figure()
-            plt.plot(self.ml_x,self.T)
-            plt.title('reward: '+str(reward))
-            plt.xlabel('Volume: '+str(self.V))
-            plt.ylabel('Heat Transfer: '+str(self.Q))
+            plt.plot(self.pde_x,self.pde_T)
+            #plt.title('reward: '+str(reward))
+            plt.xlabel('x')
+            plt.ylabel('Temperature')
+            plt.figure()
+            plt.plot(self.rwd)
+            plt.xlabel('Training Step')
+            plt.ylabel('Reward')
         return np.array(self.state), reward, done, {}
 
     def completeState(self):
@@ -124,7 +135,8 @@ class CoolingFinEnv(gym.Env):
         #willPrint = np.random.randint(0,100)
 
         #    print(self.r)
-        self.Q = -self.k*A[0]*(-1.5*self.pde_T[0]+2*self.pde_T[1]-0.5*self.pde_T[2])/self.pde_dx;
+        self.Q = np.trapz(2*np.pi*self.h*np.multiply(self.pde_r,(self.pde_T-self.Tinf)),self.pde_x)
+        #self.Q = -self.k*A[0]*(-1.5*self.pde_T[0]+2*self.pde_T[1]-0.5*self.pde_T[2])/self.pde_dx;
         self.V = np.trapz(A,self.pde_x)
         self.state = np.concatenate((self.r,self.T),axis=0)
         self.state = np.append(self.state,self.Q)
