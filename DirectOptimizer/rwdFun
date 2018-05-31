@@ -1,0 +1,40 @@
+function[R,Td] = rwdFun(x)
+L = 1;%length of fin
+n = length(x);
+rd = x(1:n);%design radius
+y = linspace(0,L,n);
+%% Set up simulation parameters
+h = 20;%convection coefficient
+k = 400;%conductivity of fin material
+T0 = 500;%temperature at the base of fin
+Tinf = 200;%ambient temperature
+N = 250;%number of grid points
+x = linspace(0,L,N);%create x domain
+dx = x(2)-x(1);%find grid spacing (assumes uniform grid)
+r = interp1(y,rd,x);
+%% Solve the problem
+%Initialize matrix and forcing vector
+M = zeros(N);
+f = zeros(N,1);
+%Assign boundary condition at base
+M(1,1) = 1;
+f(1) = T0;
+%Assign boundary condition at tip
+M(N,N) = 3/(2*dx)+h/k;
+M(N,N-1) = -2/dx;
+M(N,N-2) = 1/(2*dx);
+f(N) = Tinf*h/k;
+%Assign internal condition
+for i = 2:N-1
+    M(i,i+1) = 0.5*r(i)/dx^2+0.25*(r(i+1)-r(i-1))/dx^2;
+    M(i,i) = -r(i)/dx^2-h/k;
+    M(i,i-1) = 0.5*r(i)/dx^2-0.25*(r(i+1)-r(i-1))/dx^2;
+    f(i) = -h*Tinf/k;
+end
+%Solve the discretized ODE for temperature
+T = M\f;
+%% Post process the solution
+Qint = trapz(x,2*pi*r.*h.*(T'-Tinf));
+V = trapz(x,pi*r.^2);
+R = 100000*V - Qint;
+Td = interp1(x,T,y);
