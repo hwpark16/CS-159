@@ -1,0 +1,25 @@
+clc
+clear all
+close all
+
+%% Set up simulation parameters
+N = 10;%number of design points
+x0 = zeros(1,N)+0.06;%initial radius
+L = 1;%length of fin
+xd = linspace(0,L,N);%create x domain
+%% solve the optimization problem Q-1000V
+lb = zeros(1,N)+0.02;
+ub = zeros(1,N)+0.1;
+options = optimoptions('fmincon','MaxIterations',1000,'MaxFunctionEvaluations',1000,'StepTolerance',0.00001);
+[r,fval] = fmincon(@(x)rwdFun(x),x0,[],[],[],[],lb,ub,[],options);
+[R,T] = rwdFun(r);
+%T = x(N+1:2*N);
+figure
+plot(xd,r)
+xlabel('x')
+ylabel('r')
+ylim([0 ub(1)])
+figure
+plot(xd,T)
+xlabel('x')
+ylabel('T')
